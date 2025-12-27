@@ -116,24 +116,48 @@ def main():
     """Main function to demonstrate usage"""
     searcher = PropertySearcher()
 
-    # Example: Add the properties we found
+    # LIVABLE PROPERTIES - Houses you can actually move into
     searcher.add_property({
-        "title": "Land Lot - Ruta de los Cenotes",
+        "title": "3BR House - Leona Vicario (BEST DEAL)",
+        "price": 94624,
+        "type": "house",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "location": "Leona Vicario (15-20 min from Puerto Morelos)",
+        "description": "Move-in ready house, inland location, actual structure you can live in",
+        "url": "https://www.properstar.com/mexico/leona-vicario/buy"
+    })
+
+    searcher.add_property({
+        "title": "1BR House - Leona Vicario",
+        "price": 106677,
+        "type": "house",
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "size": "7,244 sq ft lot / 673 m²",
+        "location": "Leona Vicario",
+        "description": "Small house, available 6/30/2026, livable structure",
+        "url": "https://www.properstar.com/mexico/leona-vicario/buy"
+    })
+
+    # LAND ONLY - Not recommended for those who can't build
+    searcher.add_property({
+        "title": "Land Lot - Ruta de los Cenotes (LAND ONLY)",
         "price": 27000,
         "type": "land",
         "size": "1,250 m² (50m x 25m)",
         "location": "Ruta de los Cenotes, Central Vallarta",
-        "description": "Titled land, free of liens, raw land requiring construction",
+        "description": "Titled land, free of liens, RAW LAND - requires construction",
         "url": "https://www.forsalepuertomorelos.com/Puerto_Morelos/Quintana_Roo/Lots_and_Land/Ruta_de_los_Cenotes/Agent/Listing_259944340.html"
     })
 
     searcher.add_property({
-        "title": "Equipped Land",
+        "title": "Equipped Land (LAND ONLY)",
         "price": 73189,
         "type": "land",
         "size": "2,799 sq ft",
         "location": "Puerto Morelos",
-        "description": "Land with some infrastructure/utilities"
+        "description": "Land with some infrastructure/utilities - must still build"
     })
 
     print("=" * 60)
@@ -149,7 +173,9 @@ def main():
 
     # Filter examples
     print(f"💰 Properties under $50,000: {len(searcher.filter_by_price(50000))} found")
-    print(f"🏞️  Land properties: {len(searcher.filter_by_type('land'))} found")
+    print(f"🏠 Houses (livable): {len(searcher.filter_by_type('house'))} found")
+    print(f"🏞️  Land properties (must build): {len(searcher.filter_by_type('land'))} found")
+    print(f"💵 Properties under $100,000: {len(searcher.filter_by_price(100000))} found")
     print()
 
     # Budget recommendation
