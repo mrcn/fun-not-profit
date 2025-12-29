@@ -49,12 +49,17 @@ def create_epub(md_file, epub_file):
     <dc:identifier id="BookID">urn:uuid:covert-dismantling-reason-2025</dc:identifier>
   </metadata>
   <manifest>
+    <item id="toc" href="toc.html" media-type="application/xhtml+xml"/>
     <item id="content" href="content.html" media-type="application/xhtml+xml"/>
     <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
   </manifest>
   <spine toc="ncx">
+    <itemref idref="toc"/>
     <itemref idref="content"/>
   </spine>
+  <guide>
+    <reference type="toc" title="Table of Contents" href="toc.html"/>
+  </guide>
 </package>'''
 
     with open('epub_temp/OEBPS/content.opf', 'w') as f:
@@ -88,6 +93,69 @@ def create_epub(md_file, epub_file):
 
     with open('epub_temp/OEBPS/toc.ncx', 'w', encoding='utf-8') as f:
         f.write(toc_ncx)
+
+    # Create visible HTML table of contents page
+    toc_html_entries = []
+    for entry in toc_entries:
+        indent = '  ' * (entry['level'] - 1)
+        toc_html_entries.append(f'{indent}<li><a href="content.html#{entry["id"]}">{entry["text"]}</a></li>')
+
+    toc_html = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Table of Contents</title>
+  <style type="text/css">
+    body {{
+      font-family: Georgia, serif;
+      line-height: 1.8;
+      margin: 2em;
+      max-width: 800px;
+    }}
+    h1 {{
+      color: #2c3e50;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 0.5em;
+      margin-bottom: 1em;
+    }}
+    ul {{
+      list-style-type: none;
+      padding-left: 0;
+    }}
+    li {{
+      margin: 0.5em 0;
+      padding-left: 0;
+    }}
+    li li {{
+      padding-left: 2em;
+      margin: 0.3em 0;
+    }}
+    li li li {{
+      padding-left: 4em;
+      font-size: 0.95em;
+    }}
+    a {{
+      color: #2980b9;
+      text-decoration: none;
+      display: block;
+      padding: 0.3em 0;
+    }}
+    a:hover {{
+      color: #3498db;
+      text-decoration: underline;
+    }}
+  </style>
+</head>
+<body>
+  <h1>Table of Contents</h1>
+  <ul>
+{chr(10).join(toc_html_entries)}
+  </ul>
+</body>
+</html>'''
+
+    with open('epub_temp/OEBPS/toc.html', 'w', encoding='utf-8') as f:
+        f.write(toc_html)
 
     # Create content.html
     html_doc = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -132,6 +200,7 @@ def create_epub(md_file, epub_file):
         epub.write('epub_temp/META-INF/container.xml', 'META-INF/container.xml')
         epub.write('epub_temp/OEBPS/content.opf', 'OEBPS/content.opf')
         epub.write('epub_temp/OEBPS/toc.ncx', 'OEBPS/toc.ncx')
+        epub.write('epub_temp/OEBPS/toc.html', 'OEBPS/toc.html')
         epub.write('epub_temp/OEBPS/content.html', 'OEBPS/content.html')
 
     # Cleanup
