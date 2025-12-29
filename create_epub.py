@@ -3,6 +3,7 @@
 
 import zipfile
 import os
+import re
 from datetime import datetime
 
 def create_epub(md_file, epub_file):
@@ -12,8 +13,11 @@ def create_epub(md_file, epub_file):
     with open(md_file, 'r', encoding='utf-8') as f:
         md_content = f.read()
 
+    # Extract headers for TOC
+    toc_entries = extract_toc(md_content)
+
     # Convert markdown to HTML (simple conversion)
-    html_content = markdown_to_html(md_content)
+    html_content = markdown_to_html(md_content, toc_entries)
 
     # Create temporary directory structure
     os.makedirs('epub_temp/META-INF', exist_ok=True)
@@ -56,25 +60,33 @@ def create_epub(md_file, epub_file):
     with open('epub_temp/OEBPS/content.opf', 'w') as f:
         f.write(content_opf)
 
-    # Create toc.ncx
-    toc_ncx = '''<?xml version="1.0" encoding="UTF-8"?>
+    # Create toc.ncx with all sections
+    max_depth = max([entry['level'] for entry in toc_entries], default=1)
+
+    navpoints = []
+    for i, entry in enumerate(toc_entries):
+        navpoints.append(f'''    <navPoint id="navPoint-{i+1}" playOrder="{i+1}">
+      <navLabel><text>{escape_xml(entry['text'])}</text></navLabel>
+      <content src="content.html#{entry['id']}"/>
+    </navPoint>''')
+
+    toc_ncx = f'''<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head>
     <meta name="dtb:uid" content="urn:uuid:covert-dismantling-reason-2025"/>
-    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:depth" content="{max_depth}"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
   </head>
   <docTitle>
     <text>The Covert Dismantling of Reason</text>
   </docTitle>
   <navMap>
-    <navPoint id="content">
-      <navLabel><text>Main Content</text></navLabel>
-      <content src="content.html"/>
-    </navPoint>
+{chr(10).join(navpoints)}
   </navMap>
 </ncx>'''
 
-    with open('epub_temp/OEBPS/toc.ncx', 'w') as f:
+    with open('epub_temp/OEBPS/toc.ncx', 'w', encoding='utf-8') as f:
         f.write(toc_ncx)
 
     # Create content.html
@@ -112,11 +124,11 @@ def create_epub(md_file, epub_file):
     with open('epub_temp/OEBPS/content.html', 'w', encoding='utf-8') as f:
         f.write(html_doc)
 
-    # Create EPUB (zip file)
-    with zipfile.ZipFile(epub_file, 'w', zipfile.ZIP_DEFLATED) as epub:
-        # mimetype must be first and uncompressed
+    # Create EPUB (zip file) with maximum compression
+    with zipfile.ZipFile(epub_file, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as epub:
+        # mimetype must be first and uncompressed per EPUB spec
         epub.write('epub_temp/mimetype', 'mimetype', compress_type=zipfile.ZIP_STORED)
-        # Add other files
+        # Add other files with maximum compression
         epub.write('epub_temp/META-INF/container.xml', 'META-INF/container.xml')
         epub.write('epub_temp/OEBPS/content.opf', 'OEBPS/content.opf')
         epub.write('epub_temp/OEBPS/toc.ncx', 'OEBPS/toc.ncx')
@@ -129,20 +141,52 @@ def create_epub(md_file, epub_file):
     print(f"EPUB created successfully: {epub_file}")
 
 
-def markdown_to_html(md_text):
-    """Simple markdown to HTML conversion."""
-    import re
+def extract_toc(md_text):
+    """Extract table of contents from markdown headers."""
+    toc_entries = []
+    header_pattern = re.compile(r'^(#{1,6})\s+(.+)$', re.MULTILINE)
 
+    for match in header_pattern.finditer(md_text):
+        level = len(match.group(1))
+        text = match.group(2).strip()
+        # Create ID from text
+        header_id = re.sub(r'[^\w\s-]', '', text.lower())
+        header_id = re.sub(r'[-\s]+', '-', header_id)
+
+        toc_entries.append({
+            'level': level,
+            'text': text,
+            'id': header_id
+        })
+
+    return toc_entries
+
+
+def escape_xml(text):
+    """Escape XML special characters."""
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&apos;')
+
+
+def markdown_to_html(md_text, toc_entries):
+    """Simple markdown to HTML conversion with anchored headers."""
     html = md_text
 
     # Escape HTML entities
     html = html.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
-    # Headers
-    html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
-    html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-    html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-    html = re.sub(r'^#### (.+)$', r'<h4>\1</h4>', html, flags=re.MULTILINE)
+    # Headers with IDs for navigation
+    header_index = 0
+    def replace_header(match):
+        nonlocal header_index
+        level = len(match.group(1))
+        text = match.group(2)
+        if header_index < len(toc_entries):
+            header_id = toc_entries[header_index]['id']
+            header_index += 1
+            return f'<h{level} id="{header_id}">{text}</h{level}>'
+        return f'<h{level}>{text}</h{level}>'
+
+    html = re.sub(r'^(#{1,6})\s+(.+)$', replace_header, html, flags=re.MULTILINE)
 
     # Bold and italic
     html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
