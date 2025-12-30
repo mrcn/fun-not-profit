@@ -1,6 +1,8 @@
 # The Covert Dismantling of Reason
 ## A Conversation About Pragmatism, Education, and the Death of Independent Thought
 
+**Version 1.0.0** | December 2024
+
 ---
 
 ## How to Read This Document

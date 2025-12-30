@@ -9,6 +9,13 @@ from datetime import datetime
 def create_epub(md_file, epub_file):
     """Create EPUB from markdown file."""
 
+    # Read version
+    try:
+        with open('VERSION', 'r', encoding='utf-8') as f:
+            version = f.read().strip()
+    except FileNotFoundError:
+        version = '1.0.0'
+
     # Read the markdown content
     with open(md_file, 'r', encoding='utf-8') as f:
         md_content = f.read()
@@ -47,6 +54,8 @@ def create_epub(md_file, epub_file):
     <dc:language>en</dc:language>
     <dc:date>{datetime.now().strftime('%Y-%m-%d')}</dc:date>
     <dc:identifier id="BookID">urn:uuid:covert-dismantling-reason-2025</dc:identifier>
+    <meta name="version" content="{version}"/>
+    <dc:description>Version {version} - An analysis of Michael Vassar's critique of modernity, modernism, and the substitution of instrumental reason for contemplative rationality.</dc:description>
   </metadata>
   <manifest>
     <item id="toc" href="toc.html" media-type="application/xhtml+xml"/>
