@@ -264,7 +264,7 @@ def markdown_to_html(md_text, toc_entries):
 
     html = re.sub(r'^(#{1,6})\s+(.+)$', replace_header, html, flags=re.MULTILINE)
 
-    # Bold and italic
+    # Bold and italic (process before lists to handle formatting within list items)
     html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
     html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
 
@@ -277,33 +277,73 @@ def markdown_to_html(md_text, toc_entries):
     # Horizontal rules
     html = re.sub(r'^---$', r'<hr/>', html, flags=re.MULTILINE)
 
-    # Paragraphs (simple approach)
+    # Process line by line for lists and paragraphs
     lines = html.split('\n')
     processed_lines = []
     in_paragraph = False
+    in_list = False
 
     for line in lines:
         stripped = line.strip()
 
-        # Check if line is a tag
-        if stripped.startswith('<'):
+        # Check if line is a list item (starts with - or *)
+        # Use original line to preserve indentation context
+        list_match = re.match(r'^(\s*)([-*])\s+(.+)$', line)
+
+        if list_match:
+            # This is a list item
+            list_content = list_match.group(3)
+
+            # Close paragraph if open
             if in_paragraph:
                 processed_lines.append('</p>')
                 in_paragraph = False
+
+            # Open list if not already in one
+            if not in_list:
+                processed_lines.append('<ul>')
+                in_list = True
+
+            processed_lines.append(f'<li>{list_content}</li>')
+
+        elif stripped.startswith('<h') or stripped.startswith('<hr') or stripped.startswith('<blockquote'):
+            # Close any open paragraph or list
+            if in_paragraph:
+                processed_lines.append('</p>')
+                in_paragraph = False
+            if in_list:
+                processed_lines.append('</ul>')
+                in_list = False
             processed_lines.append(line)
+
         elif stripped == '':
+            # Empty line - close open paragraph or list
             if in_paragraph:
                 processed_lines.append('</p>')
                 in_paragraph = False
-            processed_lines.append(line)
+            if in_list:
+                processed_lines.append('</ul>')
+                in_list = False
+            processed_lines.append('')
+
         else:
+            # Regular text line
+            # Close list if open
+            if in_list:
+                processed_lines.append('</ul>')
+                in_list = False
+
+            # Start or continue paragraph
             if not in_paragraph:
                 processed_lines.append('<p>')
                 in_paragraph = True
             processed_lines.append(line)
 
+    # Close any remaining open tags
     if in_paragraph:
         processed_lines.append('</p>')
+    if in_list:
+        processed_lines.append('</ul>')
 
     return '\n'.join(processed_lines)
 
