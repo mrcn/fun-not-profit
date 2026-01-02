@@ -6,7 +6,7 @@ import os
 import re
 from datetime import datetime
 
-def create_epub(md_file, epub_file):
+def create_epub(md_file, epub_file, title="Document", book_id="document"):
     """Create EPUB from markdown file."""
 
     # Read the markdown content
@@ -42,11 +42,11 @@ def create_epub(md_file, epub_file):
     content_opf = f'''<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="BookID">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:title>The Covert Dismantling of Reason</dc:title>
+    <dc:title>{escape_xml(title)}</dc:title>
     <dc:creator>Conversation Analysis</dc:creator>
     <dc:language>en</dc:language>
     <dc:date>{datetime.now().strftime('%Y-%m-%d')}</dc:date>
-    <dc:identifier id="BookID">urn:uuid:covert-dismantling-reason-2025</dc:identifier>
+    <dc:identifier id="BookID">urn:uuid:{book_id}-2025</dc:identifier>
   </metadata>
   <manifest>
     <item id="toc" href="toc.html" media-type="application/xhtml+xml"/>
@@ -78,13 +78,13 @@ def create_epub(md_file, epub_file):
     toc_ncx = f'''<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head>
-    <meta name="dtb:uid" content="urn:uuid:covert-dismantling-reason-2025"/>
+    <meta name="dtb:uid" content="urn:uuid:{book_id}-2025"/>
     <meta name="dtb:depth" content="{max_depth}"/>
     <meta name="dtb:totalPageCount" content="0"/>
     <meta name="dtb:maxPageNumber" content="0"/>
   </head>
   <docTitle>
-    <text>The Covert Dismantling of Reason</text>
+    <text>{escape_xml(title)}</text>
   </docTitle>
   <navMap>
 {chr(10).join(navpoints)}
@@ -169,7 +169,7 @@ def create_epub(md_file, epub_file):
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>The Covert Dismantling of Reason</title>
+  <title>{escape_xml(title)}</title>
   <style type="text/css">
     body {{ font-family: Georgia, serif; line-height: 1.6; margin: 2em; }}
     h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.3em; }}
@@ -349,7 +349,19 @@ def markdown_to_html(md_text, toc_entries):
 
 
 if __name__ == '__main__':
-    create_epub(
-        'the-covert-dismantling-of-reason.md',
-        'the-covert-dismantling-of-reason.epub'
-    )
+    import sys
+
+    if len(sys.argv) >= 3:
+        md_file = sys.argv[1]
+        epub_file = sys.argv[2]
+        title = sys.argv[3] if len(sys.argv) >= 4 else "Document"
+        book_id = sys.argv[4] if len(sys.argv) >= 5 else "document"
+        create_epub(md_file, epub_file, title, book_id)
+    else:
+        # Default to the original file if no arguments provided
+        create_epub(
+            'the-covert-dismantling-of-reason.md',
+            'the-covert-dismantling-of-reason.epub',
+            'The Covert Dismantling of Reason',
+            'covert-dismantling-reason'
+        )
