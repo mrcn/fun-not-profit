@@ -4,14 +4,28 @@
 import zipfile
 import os
 import re
+import sys
 from datetime import datetime
 
-def create_epub(md_file, epub_file):
+
+def create_epub(md_file, epub_file, title=None, author=None):
     """Create EPUB from markdown file."""
 
     # Read the markdown content
     with open(md_file, 'r', encoding='utf-8') as f:
         md_content = f.read()
+
+    # Extract title from first H1 if not provided
+    if title is None:
+        title_match = re.search(r'^#\s+(.+)$', md_content, re.MULTILINE)
+        title = title_match.group(1) if title_match else "Untitled"
+
+    if author is None:
+        author = "Conversation Analysis"
+
+    # Create a URL-safe book ID from the title
+    book_id = re.sub(r'[^\w\s-]', '', title.lower())
+    book_id = re.sub(r'[-\s]+', '-', book_id)
 
     # Extract headers for TOC
     toc_entries = extract_toc(md_content)
@@ -42,11 +56,11 @@ def create_epub(md_file, epub_file):
     content_opf = f'''<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="BookID">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:title>The Covert Dismantling of Reason</dc:title>
-    <dc:creator>Conversation Analysis</dc:creator>
+    <dc:title>{escape_xml(title)}</dc:title>
+    <dc:creator>{escape_xml(author)}</dc:creator>
     <dc:language>en</dc:language>
     <dc:date>{datetime.now().strftime('%Y-%m-%d')}</dc:date>
-    <dc:identifier id="BookID">urn:uuid:covert-dismantling-reason-2025</dc:identifier>
+    <dc:identifier id="BookID">urn:uuid:{book_id}-{datetime.now().strftime('%Y')}</dc:identifier>
   </metadata>
   <manifest>
     <item id="toc" href="toc.html" media-type="application/xhtml+xml"/>
@@ -78,13 +92,13 @@ def create_epub(md_file, epub_file):
     toc_ncx = f'''<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head>
-    <meta name="dtb:uid" content="urn:uuid:covert-dismantling-reason-2025"/>
+    <meta name="dtb:uid" content="urn:uuid:{book_id}-{datetime.now().strftime('%Y')}"/>
     <meta name="dtb:depth" content="{max_depth}"/>
     <meta name="dtb:totalPageCount" content="0"/>
     <meta name="dtb:maxPageNumber" content="0"/>
   </head>
   <docTitle>
-    <text>The Covert Dismantling of Reason</text>
+    <text>{escape_xml(title)}</text>
   </docTitle>
   <navMap>
 {chr(10).join(navpoints)}
@@ -169,7 +183,7 @@ def create_epub(md_file, epub_file):
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>The Covert Dismantling of Reason</title>
+  <title>{escape_xml(title)}</title>
   <style type="text/css">
     body {{ font-family: Georgia, serif; line-height: 1.6; margin: 2em; }}
     h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 0.3em; }}
@@ -349,7 +363,14 @@ def markdown_to_html(md_text, toc_entries):
 
 
 if __name__ == '__main__':
-    create_epub(
-        'the-covert-dismantling-of-reason.md',
-        'the-covert-dismantling-of-reason.epub'
-    )
+    if len(sys.argv) < 3:
+        print("Usage: python create_epub.py <input.md> <output.epub> [title] [author]")
+        print("Example: python create_epub.py document.md document.epub 'My Title' 'Author Name'")
+        sys.exit(1)
+
+    md_file = sys.argv[1]
+    epub_file = sys.argv[2]
+    title = sys.argv[3] if len(sys.argv) > 3 else None
+    author = sys.argv[4] if len(sys.argv) > 4 else None
+
+    create_epub(md_file, epub_file, title, author)
